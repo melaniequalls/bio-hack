@@ -1,0 +1,43 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs and caches
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.eslintcache
+
+# Node/Vite
+node_modules/
+dist/
+.vite/
+coverage/
+
+# Frontend build artifacts
+build/
+
+# IDE/editor
+.idea/
+.vscode/
+
+# Env files (secrets)
+.env
+.env.*
+
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Misc
+*.swp
+*.swo
