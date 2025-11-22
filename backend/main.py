@@ -16,6 +16,7 @@ from datetime import datetime
 # Additional imports for Skyflow integration and token stability
 import hashlib
 import hmac
+import base64
 
 try:
     from skyflow import Skyflow, Env, LogLevel
@@ -132,6 +133,7 @@ def init_skyflow():
 init_skyflow()
 
 anthropic = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+ANTHROPIC_MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-3-5-sonnet-20241022")
 PARALLEL_API_KEY = os.environ.get("PARALLEL_API_KEY")
 
 # --- 1. THE SHIELD (Skyflow / Mock) ---
@@ -171,14 +173,20 @@ def scrub_pii(text):
         table = os.getenv("SKYFLOW_TABLE_PATIENTS", "persons")
         name_field = os.getenv("SKYFLOW_FIELD_NAME", "name")
         dob_field = os.getenv("SKYFLOW_FIELD_DOB", "dob")
+        b64_required = os.getenv("SKYFLOW_B64", "true").lower() in ("1", "true", "yes", "on")
         try:
+            def enc(v: str) -> str:
+                if not v:
+                    return ""
+                return base64.b64encode(v.encode("utf-8")).decode("ascii") if b64_required else v
+
             payload = {
                 "records": [
                     {
                         "table": table,
                         "fields": {
-                            name_field: name or "",
-                            dob_field: dob or "",
+                            name_field: enc(name or ""),
+                            dob_field: enc(dob or ""),
                         }
                     }
                 ]
@@ -392,7 +400,7 @@ async def analyze(file: UploadFile = File(...)):
     print("🧠 Sending to Claude...")
     try:
         response = anthropic.messages.create(
-            model="claude-3-5-sonnet-latest",
+            model=ANTHROPIC_MODEL,
             max_tokens=1500,
             system=SYSTEM_PROMPT,
             messages=[{"role": "user", "content": f"{safe_text}\n\n{context_str}"}]
@@ -461,9 +469,10 @@ def get_history(patient_token: str):
     try:
         history_json = r.get(history_key)
         history = json.loads(history_json) if history_json else []
-        return {"patient": patient_token, "history": history}
     except Exception as e:
-        raise HTTPException(status_code=503, detail=f"Redis unavailable: {e}")
+        print(f"⚠️ Redis unavailable: {e}")
+        history = []
+    return {"patient": patient_token, "history": history}
 
 if __name__ == "__main__":
     import uvicorn
